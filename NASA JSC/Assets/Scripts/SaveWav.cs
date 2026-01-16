@@ -35,6 +35,7 @@ namespace Samples.Whisper
 	{
 		private const int HeaderSize = 44;
 
+		//Converts a UnityAudioClip into PCM bytes
 		public static byte[] Save(string filename, AudioClip clip)
 		{
 			if (!filename.ToLower().EndsWith(".wav"))

@@ -12,15 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b5a1f07dc5afe854f9f12a4194aca3fb, type: 3}
   m_Name: iPhone
   m_EditorClassIdentifier: 
-  features:
-  - {fileID: 928860439610399171}
+  features: []
   m_renderMode: 1
-  m_autoColorSubmissionMode: 1
-  m_colorSubmissionModes:
-    m_List: 00000000
   m_depthSubmissionMode: 0
-  m_spacewarpMotionVectorTextureFormat: 0
-  m_optimizeBufferDiscards: 0
   m_symmetricProjection: 0
 --- !u!114 &-8895518590110429109
 MonoBehaviour:
@@ -429,12 +423,7 @@ MonoBehaviour:
   - {fileID: 2316775424616146661}
   - {fileID: -5611916350011621528}
   m_renderMode: 1
-  m_autoColorSubmissionMode: 1
-  m_colorSubmissionModes:
-    m_List: 00000000
   m_depthSubmissionMode: 0
-  m_spacewarpMotionVectorTextureFormat: 0
-  m_optimizeBufferDiscards: 0
   m_symmetricProjection: 0
 --- !u!114 &-6919491694601972775
 MonoBehaviour:
@@ -835,39 +824,32 @@ MonoBehaviour:
   m_Name: Standalone
   m_EditorClassIdentifier: 
   features:
-  - {fileID: 4963040286616351577}
-  - {fileID: -8749980634715080836}
-  - {fileID: 4893829345954421791}
-  - {fileID: -4478006660784508864}
-  - {fileID: -6081641041439107477}
-  - {fileID: 32361891232910083}
-  - {fileID: 1727173055597128861}
-  - {fileID: -5941725581135416239}
-  - {fileID: -8084016706463946720}
-  - {fileID: -4647824206626811188}
-  - {fileID: -1028784285735575096}
   - {fileID: -4112343758002830321}
   - {fileID: 6686826314867713791}
   - {fileID: 713114384693194446}
   - {fileID: 6332868043042223764}
   - {fileID: -8842112403930591549}
+  - {fileID: 8221564594354640495}
   - {fileID: -8434606322207663280}
+  - {fileID: -8749980634715080836}
+  - {fileID: 4893829345954421791}
+  - {fileID: -4478006660784508864}
+  - {fileID: -6081641041439107477}
+  - {fileID: -1807504434205693845}
+  - {fileID: 32361891232910083}
+  - {fileID: 2497339995422133549}
+  - {fileID: -5941725581135416239}
+  - {fileID: -8084016706463946720}
+  - {fileID: 4025793028449617705}
   - {fileID: 1507748248788215057}
   - {fileID: 7413458854745118488}
   - {fileID: 4054846353496584751}
-  - {fileID: 154189092879288027}
+  - {fileID: 8696673654983134887}
   - {fileID: -4731438336562001402}
   - {fileID: 4890582492822650874}
-  - {fileID: -5611916350011621528}
-  - {fileID: 239522605376452086}
-  - {fileID: -1807504434205693845}
+  - {fileID: 2220871646205782247}
   m_renderMode: 1
-  m_autoColorSubmissionMode: 1
-  m_colorSubmissionModes:
-    m_List: 00000000
   m_depthSubmissionMode: 0
-  m_spacewarpMotionVectorTextureFormat: 0
-  m_optimizeBufferDiscards: 0
   m_symmetricProjection: 0
 --- !u!114 &-2868464604798013702
 MonoBehaviour:
@@ -1174,15 +1156,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b5a1f07dc5afe854f9f12a4194aca3fb, type: 3}
   m_Name: WebGL
   m_EditorClassIdentifier: 
-  features:
-  - {fileID: 9127147935380909154}
+  features: []
   m_renderMode: 1
-  m_autoColorSubmissionMode: 1
-  m_colorSubmissionModes:
-    m_List: 00000000
   m_depthSubmissionMode: 0
-  m_spacewarpMotionVectorTextureFormat: 0
-  m_optimizeBufferDiscards: 0
   m_symmetricProjection: 0
 --- !u!114 &-263211618680627667
 MonoBehaviour:
@@ -1257,37 +1233,30 @@ MonoBehaviour:
   m_Name: Android
   m_EditorClassIdentifier: 
   features:
-  - {fileID: 7558681416710770871}
-  - {fileID: -7608755179541951601}
-  - {fileID: 3554264124859437666}
-  - {fileID: 8968387473496227895}
-  - {fileID: -7492839480718335507}
-  - {fileID: 9020184986697725232}
-  - {fileID: -1405949962171395472}
-  - {fileID: 7497383018830012468}
-  - {fileID: 1027242606257235352}
-  - {fileID: 7223869130901287869}
   - {fileID: 2210956963642731668}
   - {fileID: 5598236113707450061}
   - {fileID: 4205831731108340829}
   - {fileID: -6630672567219066506}
   - {fileID: 3922913842909740280}
+  - {fileID: 7558681416710770871}
   - {fileID: -2374803099794365466}
+  - {fileID: -7608755179541951601}
+  - {fileID: 3554264124859437666}
+  - {fileID: 8968387473496227895}
+  - {fileID: -7492839480718335507}
+  - {fileID: 6102289773961682938}
+  - {fileID: 9020184986697725232}
+  - {fileID: -1405949962171395472}
+  - {fileID: 7497383018830012468}
+  - {fileID: 7223869130901287869}
   - {fileID: -3884623058556172510}
   - {fileID: -5190053797094401786}
   - {fileID: -6078868055869984845}
   - {fileID: 4743943348186933471}
   - {fileID: -6368128839055358620}
   - {fileID: -7581625304019661375}
-  - {fileID: -1065019599540112960}
-  - {fileID: 6102289773961682938}
   m_renderMode: 1
-  m_autoColorSubmissionMode: 1
-  m_colorSubmissionModes:
-    m_List: 00000000
   m_depthSubmissionMode: 0
-  m_spacewarpMotionVectorTextureFormat: 0
-  m_optimizeBufferDiscards: 0
   m_symmetricProjection: 0
 --- !u!114 &-34596358968032513
 MonoBehaviour:
@@ -2130,10 +2099,10 @@ MonoBehaviour:
   - {fileID: 1039554243789083694}
   - {fileID: 6915735608914255312}
   - {fileID: -3247918529982832754}
+  - {fileID: -316248087613266340}
   - {fileID: -147496002625709090}
   - {fileID: -77653862405125338}
   - {fileID: 1689981271454269524}
-  - {fileID: -6919491694601972775}
   - {fileID: -2868464604798013702}
   - {fileID: -502281778469748916}
   - {fileID: 6337863122941420130}
@@ -2141,15 +2110,8 @@ MonoBehaviour:
   - {fileID: 4199279956650687077}
   - {fileID: 941575815996122829}
   - {fileID: 1788033592227824331}
-  - {fileID: 5263415826925287335}
-  - {fileID: -316248087613266340}
   m_renderMode: 1
-  m_autoColorSubmissionMode: 1
-  m_colorSubmissionModes:
-    m_List: 00000000
   m_depthSubmissionMode: 0
-  m_spacewarpMotionVectorTextureFormat: 0
-  m_optimizeBufferDiscards: 0
   m_symmetricProjection: 0
 --- !u!114 &4451366187881382638
 MonoBehaviour:
@@ -2631,13 +2593,9 @@ MonoBehaviour:
     enabled: 1
   forceRemoveInternetPermission: 1
   symmetricProjection: 0
-  foveatedRenderingApi: 0
   systemSplashScreen: {fileID: 0}
-  optimizeBufferDiscards: 1
   lateLatchingMode: 0
   lateLatchingDebug: 0
-  optimizeMultiviewRenderRegions: 0
-  spacewarpMotionVectorTextureFormat: 0
 --- !u!114 &7558681416710770871
 MonoBehaviour:
   m_ObjectHideFlags: 0
