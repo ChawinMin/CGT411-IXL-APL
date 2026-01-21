@@ -17,7 +17,7 @@ namespace Samples.Whisper
         private readonly int duration = 1;
 
         private AudioClip clip; // Current mic capture buffer.
-        private bool isRecording; // Whether we should keep cycling chunks.
+        public bool isRecording; // Whether we should keep cycling chunks.
         private float time; // Timer for the current chunk.
         private string micName;
         public OpenAIApi openai = new OpenAIApi(); //API Key to OpenAI
@@ -95,8 +95,9 @@ namespace Samples.Whisper
                     Role = "user",
                     Content = res.Text
                 };
+                
                 //Pass into the AI Manager's speech list
-                aiManager.speechList.Add(msg);
+                aiManager.AddMessage(msg);
             }
             catch (Exception ex)
             {

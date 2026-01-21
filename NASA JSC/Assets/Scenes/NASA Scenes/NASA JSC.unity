@@ -197,6 +197,50 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -5242415913521594425, guid: 47dc28e8ac12c6a4ab120ab63b94332a, type: 3}
   m_PrefabInstance: {fileID: 41525996}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &296662509
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 296662510}
+  - component: {fileID: 296662511}
+  m_Layer: 0
+  m_Name: ElevanLabsManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &296662510
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 296662509}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1450906549}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &296662511
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 296662509}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77dfd08d645244f409c4b2ab5af4e898, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!114 &362283529 stripped
 MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 153982007679157697, guid: f6336ac4ac8b4d34bc5072418cdc62a0, type: 3}
@@ -794,6 +838,7 @@ Transform:
   m_Children:
   - {fileID: 2129398368}
   - {fileID: 1885687743}
+  - {fileID: 296662510}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &1490845625 stripped
@@ -1014,6 +1059,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3ce06e6d7660fbe468419057324aa971, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  whisper: {fileID: 2129398367}
+  aiResponses: []
 --- !u!1 &2122795154
 GameObject:
   m_ObjectHideFlags: 0
@@ -1162,6 +1209,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   defaultMicIndex: 0
+  isRecording: 0
   aiManager: {fileID: 1885687744}
 --- !u!4 &2129398368
 Transform:
