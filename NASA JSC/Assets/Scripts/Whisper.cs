@@ -10,17 +10,34 @@ namespace Samples.Whisper
     public class Whisper : MonoBehaviour
     {
 
+        /*
+        RMS means Root Mean Square. It is a statistical measure used to quantify the magnitude of a varying quantity. 
+        In audio processing, RMS is commonly used to measure the average power or 
+        loudness of an audio signal
+
+        Utterance is a single spoken word, statement, or vocal sound made by a person. Think of a sentence.
+        */
         [SerializeField] private int defaultMicIndex = 0;
 
         private readonly string fileName = "output.wav";
         // Length of each chunk (seconds) to transcribe while recording continues.
         private readonly int duration = 1;
+        [SerializeField] private float speechRmsThreshold = 0.01f;
+        [SerializeField] private float endSilenceSeconds = 0.2f;
+        [SerializeField] private float maxUtteranceSeconds = 4f;
 
         private AudioClip clip; // Current mic capture buffer.
         public bool isRecording; // Whether we should keep cycling chunks.
         private float time; // Timer for the current chunk.
         private string micName;
         public OpenAIApi openai = new OpenAIApi(); //API Key to OpenAI
+        private bool isTranscribing; // Whether a transcription request is in flight.
+        private AudioClip pendingClip; // Keep the most recent chunk while a request is in flight.
+        private readonly List<float> utteranceBuffer = new List<float>();
+        private bool inSpeech; // Whether we are currently in a speech segment.
+        private float silenceTimer; // Timer for silence at end of speech segment.
+        private int sampleRate; // Cached sample rate of the mic.
+        private int channels; // Cached channel count of the mic.
 
         public AIManager aiManager; //Reference to AIManager Script
 
@@ -73,6 +90,12 @@ namespace Samples.Whisper
         // Sends a finished chunk to Whisper without blocking recording.
         private async void TranscribeClip(AudioClip clipToTranscribe)
         {
+            if (clipToTranscribe == null || IsSilent(clipToTranscribe, speechRmsThreshold))
+            {
+                return; // Skip transcription on silence/empty clip.
+            }
+
+            isTranscribing = true;
             // Create a unique filename so chunk saves don't overwrite each other.
             var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff");
             var chunkFileName = $"{timestamp}_{fileName}";
@@ -103,6 +126,16 @@ namespace Samples.Whisper
             {
                 Debug.LogError($"There is an error in Whisper: {ex.Message}");
             }
+            finally
+            {
+                isTranscribing = false;
+                if (pendingClip != null)
+                {
+                    var next = pendingClip;
+                    pendingClip = null;
+                    TranscribeClip(next);
+                }
+            }
         }
 
         private void Update()
@@ -126,7 +159,112 @@ namespace Samples.Whisper
             // Grab the finished clip, restart recording, and transcribe the old clip.
             var clipToTranscribe = clip;
             StartRecording();
-            TranscribeClip(clipToTranscribe);
+            ProcessChunk(clipToTranscribe);
+        }
+
+        // Process a finished chunk for speech segments.
+        private void ProcessChunk(AudioClip clipToProcess)
+        {
+            if (clipToProcess == null)
+            {
+                return;
+            }
+
+            if (sampleRate == 0)
+            {
+                sampleRate = clipToProcess.frequency;
+                channels = clipToProcess.channels;
+            }
+
+            var rms = GetRms(clipToProcess);
+            var isSilent = rms < speechRmsThreshold;
+
+            if (!isSilent)
+            {
+                inSpeech = true;
+                silenceTimer = 0f;
+                AppendSamples(clipToProcess);
+
+                var currentSeconds = (float)utteranceBuffer.Count / (sampleRate * channels);
+
+                // If we've exceeded max utterance length, flush it now.
+                if (currentSeconds >= maxUtteranceSeconds)
+                {
+                    FlushUtterance();
+                }
+                return;
+            }
+
+            if (!inSpeech)
+            {
+                return;
+            }
+
+            silenceTimer += duration;
+            // If we've reached the end of speech, flush the utterance.
+            if (silenceTimer >= endSilenceSeconds)
+            {
+                FlushUtterance();
+            }
+        }
+
+        // Append samples from the given clip to the utterance buffer.
+        private void AppendSamples(AudioClip clipToAppend)
+        {
+            var samples = new float[clipToAppend.samples * clipToAppend.channels];
+            clipToAppend.GetData(samples, 0);
+            utteranceBuffer.AddRange(samples);
+        }
+
+        // Flush the current utterance buffer (package into a single audio clip) 
+        // and send it for transcription.
+        private void FlushUtterance()
+        {
+            if (utteranceBuffer.Count == 0)
+            {
+                inSpeech = false;
+                silenceTimer = 0f;
+                return;
+            }
+
+            var totalSamples = utteranceBuffer.Count / channels;
+            var utteranceClip = AudioClip.Create("utterance", totalSamples, channels, sampleRate, false);
+            utteranceClip.SetData(utteranceBuffer.ToArray(), 0);
+
+            utteranceBuffer.Clear();
+            inSpeech = false;
+            silenceTimer = 0f;
+
+            if (isTranscribing)
+            {
+                pendingClip = utteranceClip;
+                return;
+            }
+
+            TranscribeClip(utteranceClip);
+        }
+
+        // Simple RMS check to skip silent chunks.
+        private static bool IsSilent(AudioClip clipToCheck, float rmsThreshold)
+        {
+            return GetRms(clipToCheck) < rmsThreshold;
+        }
+
+        private static float GetRms(AudioClip clipToCheck)
+        {
+            //Compares the audio clip's RMS to a threshold value. And check if it is below the threshold or 
+            //higher. To determine if the clip is silent or not.
+            var samples = new float[clipToCheck.samples * clipToCheck.channels];
+            clipToCheck.GetData(samples, 0);
+
+            double sum = 0;
+            for (var i = 0; i < samples.Length; i++)
+            {
+                var s = samples[i];
+                sum += s * s;
+            }
+
+            return Mathf.Sqrt((float)(sum / samples.Length));
         }
     }
 }

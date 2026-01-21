@@ -19,6 +19,13 @@ public class AIManager : MonoBehaviour
 
     public List<string> aiResponses = new List<string>(); //List to hold AI responses
 
+    private string lastUserContent; //Track last user content to avoid repeated sends
+
+    [SerializeField]
+    private string promptAI = 
+    "You are a NASA mission assistant helping stackholders understand what is happening in NASA Johnson Space Center Mission Control Center. "
+        + "Provide clear, concise, and accurate information based on NASA protocols and procedures. "
+        + "Keep responses relevant to space missions and astronaut activities.";
 
     private void Awake()
     {
@@ -48,13 +55,36 @@ public class AIManager : MonoBehaviour
 
     public void AddMessage(ChatMessage message)
     {
+        if (string.IsNullOrWhiteSpace(message.Content))
+        {
+            return; //Ignore empty/no-audio messages
+        }
+
+        if (message.Role == "user" && message.Content == lastUserContent)
+        {
+            return; //Skip duplicate user messages
+        }
+
         speechList.Add(message);
+        if (message.Role == "user")
+        {
+            lastUserContent = message.Content;
+        }
         hasNewMessage = true; //Set the flag to indicate a new message has been added
     }
 
     public async void SendRequest()
     {
-        var messages = new List<ChatMessage>(speechList);
+        var messages = new List<ChatMessage>();
+        //Add the system prompt first
+        messages.Add(new ChatMessage
+        {
+            Role = "system",
+            Content = promptAI
+        });
+        messages.AddRange(speechList); //Add all messages from the speech list
+
+        //Create the chat completion request based on the messages and prompts
         var req = new CreateChatCompletionRequest()
         {
             Model = "gpt-5-nano",
