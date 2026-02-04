@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 
 namespace Samples.Whisper
 {
@@ -38,6 +39,8 @@ namespace Samples.Whisper
         private float silenceTimer; // Timer for silence at end of speech segment.
         private int sampleRate; // Cached sample rate of the mic.
         private int channels; // Cached channel count of the mic.
+
+        private bool isMuted = true; // Whether the microphone is muted.
 
         public AIManager aiManager; //Reference to AIManager Script
 
@@ -140,26 +143,49 @@ namespace Samples.Whisper
 
         private void Update()
         {
-            if (!isRecording)
+            //Check for M key press to toggle mute/unmute
+            if (Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame)
             {
-                return;
+                Debug.Log("M key pressed.");
+
+                if(isMuted) //You are currently muted
+                {
+                    isMuted = false;
+                    Debug.Log("Microphone unmuted.");
+                }
+                else //You are currently unmuted
+                {
+                    isMuted = true;
+                    Debug.Log("Microphone muted.");
+                }
             }
 
-            time += Time.deltaTime;
-            if (time < duration)
+            //If not muted, process as normal
+            if(!isMuted)
             {
-                return;
+                // Handle chunk timing.
+                if (!isRecording)
+                {
+                    return;
+                }
+
+                // Update timer and check if chunk is complete.
+                time += Time.deltaTime;
+                if (time < duration)
+                {
+                    return;
+                }
+
+                // Stop the mic to finalize the chunk, then immediately restart.
+                #if !UNITY_WEBGL
+                Microphone.End(micName);
+                #endif
+
+                // Grab the finished clip, restart recording, and transcribe the old clip.
+                var clipToTranscribe = clip;
+                StartRecording();
+                ProcessChunk(clipToTranscribe);
             }
-
-            // Stop the mic to finalize the chunk, then immediately restart.
-            #if !UNITY_WEBGL
-            Microphone.End(micName);
-            #endif
-
-            // Grab the finished clip, restart recording, and transcribe the old clip.
-            var clipToTranscribe = clip;
-            StartRecording();
-            ProcessChunk(clipToTranscribe);
         }
 
         // Process a finished chunk for speech segments.
