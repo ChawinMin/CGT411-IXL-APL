@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.rest.elevenlabs": "3.7.3",
     "com.srcnalt.openai-unity": "https://github.com/srcnalt/OpenAI-Unity.git",
     "com.unity.cloud.draco": "5.2.0",
     "com.unity.cloud.gltfast": "6.14.0",
@@ -18,6 +19,12 @@
     "com.unity.xr.interaction.toolkit": "3.1.2",
     "com.unity.xr.management": "4.5.4",
     "com.unity.xr.meta-openxr": "1.0.4",
+    "com.utilities.async": "3.0.2",
+    "com.utilities.audio": "3.0.3",
+    "com.utilities.encoder.ogg": "5.0.1",
+    "com.utilities.encoder.wav": "3.0.2",
+    "com.utilities.rest": "5.1.1",
+    "com.utilities.websockets": "2.0.0",
     "com.unity.modules.ai": "1.0.0",
     "com.unity.modules.androidjni": "1.0.0",
     "com.unity.modules.animation": "1.0.0",
@@ -49,5 +56,15 @@
     "com.unity.modules.vr": "1.0.0",
     "com.unity.modules.wind": "1.0.0",
     "com.unity.modules.xr": "1.0.0"
-  }
+  },
+  "scopedRegistries": [
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": [
+        "com.rest.elevenlabs",
+        "com.utilities"
+      ]
+    }
+  ]
 }

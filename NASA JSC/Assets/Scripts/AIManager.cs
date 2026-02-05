@@ -19,13 +19,15 @@ public class AIManager : MonoBehaviour
 
     public List<string> aiResponses = new List<string>(); //List to hold AI responses
 
+    private const string AIWordcount = "30"; //Limit AI responses to 30 words
+
     private string lastUserContent; //Track last user content to avoid repeated sends
 
     [SerializeField]
     private string promptAI = 
     "You are a NASA mission assistant helping stackholders understand what is happening in NASA Johnson Space Center Mission Control Center. "
         + "Provide clear, concise, and accurate information based on NASA protocols and procedures. "
-        + "Keep responses relevant to space missions and astronaut activities.";
+        + "Keep responses relevant to space missions and astronaut activities." + $" Do not go over {AIWordcount} words in your response.";
 
     private void Awake()
     {
