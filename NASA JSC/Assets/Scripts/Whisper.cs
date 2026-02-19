@@ -21,28 +21,38 @@ namespace Samples.Whisper
         [SerializeField] private int defaultMicIndex = 0;
 
         private readonly string fileName = "output.wav";
+
         // Length of each chunk (seconds) to transcribe while recording continues.
         private readonly int duration = 1;
         [SerializeField] private float speechRmsThreshold = 0.01f;
         [SerializeField] private float endSilenceSeconds = 0.2f;
-        [SerializeField] private float maxUtteranceSeconds = 4f;
+        [SerializeField] private float maxUtteranceSeconds = 10f;
 
         private AudioClip clip; // Current mic capture buffer.
         public bool isRecording; // Whether we should keep cycling chunks.
         private float time; // Timer for the current chunk.
         private string micName;
         public OpenAIApi openai = new OpenAIApi(); //API Key to OpenAI
+
         private bool isTranscribing; // Whether a transcription request is in flight.
-        private AudioClip pendingClip; // Keep the most recent chunk while a request is in flight.
+
+        private readonly Queue<AudioClip> pendingClips = new Queue<AudioClip>(); // Queue chunks while a request is in flight.
+
         private readonly List<float> utteranceBuffer = new List<float>();
+
         private bool inSpeech; // Whether we are currently in a speech segment.
+
         private float silenceTimer; // Timer for silence at end of speech segment.
+
         private int sampleRate; // Cached sample rate of the mic.
+
         private int channels; // Cached channel count of the mic.
 
         private bool isMuted = true; // Whether the microphone is muted.
 
-        public AIManager aiManager; //Reference to AIManager Script
+        public GameObject UIMuteIcon; // Reference to the Mute Icon in the UI
+
+        public AIManager aiManager; // Reference to AIManager Script
 
         private void Awake()
         {
@@ -114,7 +124,7 @@ namespace Samples.Whisper
             try
             {
                 var res = await openai.CreateAudioTranscription(req);
-                //Debug.Log($"Printing in Whisper Script: {res.Text}");
+                Debug.Log($"Printing in Whisper Script: {res.Text}");
 
                 var msg = new ChatMessage()
                 {
@@ -132,10 +142,9 @@ namespace Samples.Whisper
             finally
             {
                 isTranscribing = false;
-                if (pendingClip != null)
+                if (pendingClips.Count > 0)
                 {
-                    var next = pendingClip;
-                    pendingClip = null;
+                    var next = pendingClips.Dequeue();
                     TranscribeClip(next);
                 }
             }
@@ -146,17 +155,19 @@ namespace Samples.Whisper
             //Check for M key press to toggle mute/unmute
             if (Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame)
             {
-                Debug.Log("M key pressed.");
+                //Debug.Log("M key pressed.");
 
                 if(isMuted) //You are currently muted
                 {
                     isMuted = false;
-                    Debug.Log("Microphone unmuted.");
+                    UIMuteIcon.SetActive(false); // Hide the mute icon
+                    //Debug.Log("Microphone unmuted.");
                 }
                 else //You are currently unmuted
                 {
                     isMuted = true;
-                    Debug.Log("Microphone muted.");
+                    UIMuteIcon.SetActive(true); // Show the mute icon
+                    //Debug.Log("Microphone muted.");
                 }
             }
 
@@ -217,6 +228,7 @@ namespace Samples.Whisper
                 if (currentSeconds >= maxUtteranceSeconds)
                 {
                     FlushUtterance();
+                    Debug.Log("Max utterance length reached, flushing to Whisper.");
                 }
                 return;
             }
@@ -227,10 +239,12 @@ namespace Samples.Whisper
             }
 
             silenceTimer += duration;
+
             // If we've reached the end of speech, flush the utterance.
             if (silenceTimer >= endSilenceSeconds)
             {
                 FlushUtterance();
+                Debug.Log("End of speech detected, flushing to Whisper.");
             }
         }
 
@@ -240,6 +254,7 @@ namespace Samples.Whisper
             var samples = new float[clipToAppend.samples * clipToAppend.channels];
             clipToAppend.GetData(samples, 0);
             utteranceBuffer.AddRange(samples);
+            Debug.Log("Samples appended to utterance buffer.");
         }
 
         // Flush the current utterance buffer (package into a single audio clip) 
@@ -263,11 +278,13 @@ namespace Samples.Whisper
 
             if (isTranscribing)
             {
-                pendingClip = utteranceClip;
+                pendingClips.Enqueue(utteranceClip);
+                Debug.Log("Reading in transcription in progress");
                 return;
             }
 
             TranscribeClip(utteranceClip);
+            Debug.Log("Transcription has been sent to Whisper.");
         }
 
         // Simple RMS check to skip silent chunks.

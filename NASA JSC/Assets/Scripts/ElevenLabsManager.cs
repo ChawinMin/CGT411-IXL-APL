@@ -9,16 +9,20 @@ using UnityEngine.UI;
 using ElevenLabs.TextToSpeech;
 using System.Linq;
 using Unity.VisualScripting;
+using ElevenLabs.Voices;
+using ElevenLabs.Models;
 
 public class ElevenLabsManager : MonoBehaviour
 {
-    
 
     private AIManager aiManager; //Reference to AIManager Script
 
     private AudioSource audioSource; //AudioSource to play TTS audio
 
     private bool isAITalking; //Flag to indicate if AI is currently talking
+    private ElevenLabsClient apiClient; //Cached ElevenLabs client to avoid recreating on every line
+    private Voice cachedVoice; //Cached voice to avoid calling GetAllVoices each request
+    private readonly Queue<string> pendingSpeech = new Queue<string>(); //Queue speech while current audio is playing
 
     [System.Serializable] //Wrapper class for deserializing auth.json and loading ElevenLabs API Key
     private class AuthWrapper
@@ -42,7 +46,7 @@ public class ElevenLabsManager : MonoBehaviour
         //Load ElevenLabs API Key
         try
         {
-           var api = getElevenLabsAPIKey();
+           apiClient = getElevenLabsAPIKey();
            Debug.Log("ElevenLabs API Key loaded successfully.");
 
         }
@@ -58,7 +62,24 @@ public class ElevenLabsManager : MonoBehaviour
             audioSource = gameObject.AddComponent<AudioSource>();
             Debug.Log("AudioSource component added.");
         }
+        audioSource.loop = false;
         
+    }
+
+    private void OnEnable()
+    {
+        if (aiManager != null)
+        {
+            aiManager.OnAIResponseReady += QueueOrSpeak;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (aiManager != null)
+        {
+            aiManager.OnAIResponseReady -= QueueOrSpeak;
+        }
     }
 
     private ElevenLabsClient getElevenLabsAPIKey()
@@ -76,44 +97,70 @@ public class ElevenLabsManager : MonoBehaviour
         return api;
     }
 
-    public async void talk()
+    private void QueueOrSpeak(string responseText)
+    {
+        if (string.IsNullOrWhiteSpace(responseText))
+        {
+            return;
+        }
+
+        if (isAITalking || audioSource.isPlaying)
+        {
+            pendingSpeech.Enqueue(responseText);
+            return;
+        }
+
+        talk(responseText);
+    }
+
+    public async void talk(string responseText)
     {
         if (isAITalking) return; //Prevent overlapping TTS requests
+        if (string.IsNullOrWhiteSpace(responseText) || apiClient == null) return;
+
         isAITalking = true;
 
         //Pass the AI response to ElevenLabs TTS and play the audio
         try
         {
-            //Get the ElevenLabs API
-            var api = getElevenLabsAPIKey();
+            //Resolve voice once and reuse for subsequent TTS requests.
+            if (cachedVoice == null)
+            {
+                cachedVoice = (await apiClient.VoicesEndpoint.GetAllVoicesAsync()).FirstOrDefault();
+            }
+            if (cachedVoice == null)
+            {
+                Debug.LogWarning("No ElevenLabs voice available.");
+                return;
+            }
 
-            //Generate TTS audio from the latest AI response
-            var voice = (await api.VoicesEndpoint.GetAllVoicesAsync()).FirstOrDefault(); 
-
-            //Use the latest AI response
-            var request = new TextToSpeechRequest(voice, aiManager.aiResponses[^1], outputFormat: OutputFormat.PCM_24000); 
+            //Flash model is optimized for lower latency.
+            var request = new TextToSpeechRequest(cachedVoice, responseText, model: Model.FlashV2_5, outputFormat: OutputFormat.PCM_24000); 
             
             //Get the generated audio clip
-            var voiceClip = await api.TextToSpeechEndpoint.TextToSpeechAsync(request);
+            var voiceClip = await apiClient.TextToSpeechEndpoint.TextToSpeechAsync(request);
 
-            //Play the generated audio clip
-            audioSource.PlayOneShot(voiceClip.AudioClip);
-            Debug.Log("TTS audio played.");
+            try
+            {
+                //Play the generated audio clip
+                audioSource.PlayOneShot(voiceClip.AudioClip);
+                Debug.Log("TTS audio played.");
+            }
+            finally
+            {
+                //GeneratedClip owns NativeArray allocations; dispose to prevent leak warnings.
+                voiceClip?.Dispose();
+            }
         }
         finally
         {
             isAITalking = false; //Reset the talking flag
-        }
-    }
-
-    public void Update()
-    {
-        //Check if audio is not playing, then play TTS audio
-        if (!audioSource.isPlaying && aiManager.aiResponses.Count > 0 && audioSource.clip == null)
-        {
-            Debug.Log("Playing TTS audio...");
-            talk();
-            audioSource.clip = null; //Reset clip to avoid replaying
+            if (pendingSpeech.Count > 0)
+            {
+                var nextSpeech = pendingSpeech.Dequeue();
+                Debug.Log("Playing next queued speech.");
+                talk(nextSpeech);
+            }
         }
     }
          
