@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.Input;
 
 public class User : MonoBehaviour
 {
@@ -27,6 +26,12 @@ public class User : MonoBehaviour
     private float groundCheckDelay = 0.3f;
     private float playerHeight;
     private float raycastDistance;
+
+    private void Awake()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+    }
 
     void Start()
     {
