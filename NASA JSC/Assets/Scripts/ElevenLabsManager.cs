@@ -17,6 +17,7 @@ public class ElevenLabsManager : MonoBehaviour
 
     [Header("References")]
     private AIManager aiManager; //Reference to AIManager Script
+    private AudioVisualizer audioVisualizer; //Reference to AudioVisualizer Script
 
     [Header("Eleven Labs States")]
     private AudioSource audioSource; //AudioSource to play TTS audio
@@ -54,6 +55,15 @@ public class ElevenLabsManager : MonoBehaviour
         catch (Exception ex)
         {
             Debug.LogWarning("ElevenLabs API Key not found: " + ex.Message);
+        }
+
+        try
+        {
+            audioVisualizer = FindObjectOfType<AudioVisualizer>();//Reference to AudioVisualizer Script
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("AudioVisualizer script not found: " + ex.Message);
         }
 
         //Get AudioSource component
@@ -145,6 +155,7 @@ public class ElevenLabsManager : MonoBehaviour
             {
                 //Play the generated audio clip
                 audioSource.PlayOneShot(voiceClip.AudioClip);
+                audioVisualizer.audioSource = audioSource; //Set the AudioSource reference in AudioVisualizer to sync visualizer with TTS audio
                 Debug.Log("TTS audio played.");
             }
             finally
