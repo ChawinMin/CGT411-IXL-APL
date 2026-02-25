@@ -15,16 +15,17 @@ using ElevenLabs.Models;
 public class ElevenLabsManager : MonoBehaviour
 {
 
+    [Header("References")]
     private AIManager aiManager; //Reference to AIManager Script
 
+    [Header("Eleven Labs States")]
     private AudioSource audioSource; //AudioSource to play TTS audio
-
     private bool isAITalking; //Flag to indicate if AI is currently talking
     private ElevenLabsClient apiClient; //Cached ElevenLabs client to avoid recreating on every line
     private Voice cachedVoice; //Cached voice to avoid calling GetAllVoices each request
     private readonly Queue<string> pendingSpeech = new Queue<string>(); //Queue speech while current audio is playing
-
     [System.Serializable] //Wrapper class for deserializing auth.json and loading ElevenLabs API Key
+
     private class AuthWrapper
     {
         public string ELEVEN_LABS_API_KEY;

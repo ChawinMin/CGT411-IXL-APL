@@ -18,20 +18,20 @@ namespace Samples.Whisper
 
         Utterance is a single spoken word, statement, or vocal sound made by a person. Think of a sentence.
         */
+        [Header("Mics and Audios")]
         [SerializeField] private int defaultMicIndex = 0;
-
         private readonly string fileName = "output.wav";
-
         // Length of each chunk (seconds) to transcribe while recording continues.
         private readonly int duration = 1;
         [SerializeField] private float speechRmsThreshold = 0.01f;
         [SerializeField] private float endSilenceSeconds = 0.2f;
         [SerializeField] private float maxUtteranceSeconds = 10f;
-
         private AudioClip clip; // Current mic capture buffer.
         public bool isRecording; // Whether we should keep cycling chunks.
         private float time; // Timer for the current chunk.
         private string micName;
+
+        [Header("OpenAI API")]
         public OpenAIApi openai = new OpenAIApi(); //API Key to OpenAI
 
         private bool isTranscribing; // Whether a transcription request is in flight.
@@ -40,6 +40,7 @@ namespace Samples.Whisper
 
         private readonly List<float> utteranceBuffer = new List<float>();
 
+        [Header("Speech Detection State")]
         private bool inSpeech; // Whether we are currently in a speech segment.
 
         private float silenceTimer; // Timer for silence at end of speech segment.
@@ -50,9 +51,10 @@ namespace Samples.Whisper
 
         private bool isMuted = true; // Whether the microphone is muted.
 
+        [Header("References and UI")]
         public GameObject UIMuteIcon; // Reference to the Mute Icon in the UI
-
         public AIManager aiManager; // Reference to AIManager Script
+        public RAG rag; // Reference to RAG Script
 
         private void Awake()
         {
@@ -64,7 +66,15 @@ namespace Samples.Whisper
             {
                 Debug.LogWarning("AIManager script not found: " + ex.Message);
             }
-            
+
+            try
+            {
+                rag = FindObjectOfType<RAG>();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("RAG script not found: " + ex.Message);
+            }
         }
 
         private void Start()
@@ -125,6 +135,12 @@ namespace Samples.Whisper
             {
                 var res = await openai.CreateAudioTranscription(req);
                 Debug.Log($"Printing in Whisper Script: {res.Text}");
+
+                if (rag != null)
+                {
+                    rag.userQuestion = res.Text; // Set the user question in RAG to the transcribed text from Whisper
+                    rag.AskQuestion(res.Text);
+                }
 
                 var msg = new ChatMessage()
                 {
