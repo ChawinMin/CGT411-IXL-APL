@@ -121,6 +121,7 @@ public class ElevenLabsManager : MonoBehaviour
             return;
         }
 
+        Debug.Log("Starting to speak AI response.");
         talk(responseText);
     }
 

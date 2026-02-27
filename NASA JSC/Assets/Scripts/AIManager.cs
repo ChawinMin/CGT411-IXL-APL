@@ -25,7 +25,7 @@ public class AIManager : MonoBehaviour
 
     [Header("AI Prompt Settings")]
     public string RAGInfomration;
-    private const string AIWordcount = "50"; //Limit AI responses to 30 words
+    private const string AIWordcount = "35"; //Limit AI responses to 35 words
     private const string FoundationsOfFlightOperationspart1 = "To instill within ourselves these qualities essential to professional excellence" + 
     "1. Discipline…Being able to follow as well as to lead, knowing that we must master ourselves before we can master our task" +
     "2. Competence…There being no substitute for total preparation and complete dedication, for space will not tolerate the careless or indifferent." +
@@ -98,7 +98,7 @@ public class AIManager : MonoBehaviour
         isSendingRequest = true;
 
         //Add the RAG information to the prompt for additional context for the AI response
-        promptAI += $"In your response, be sure to include {RAGInfomration}"; 
+        promptAI += $"In your response, pick the most important information in {RAGInfomration} but do not go over {AIWordcount} words."; 
         Debug.Log($"Recieved RAG Information (AIManager.cs): {RAGInfomration}"); //Debug line to confirm RAG information is being received
 
         var messages = new List<ChatMessage>();
