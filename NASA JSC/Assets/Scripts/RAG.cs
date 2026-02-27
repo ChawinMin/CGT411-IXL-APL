@@ -21,13 +21,16 @@ public class RAG : MonoBehaviour
         public string text;
     }
 
+    [Header("References")]
+    public Whisper whisper;
+    public AIManager aiManager;
+
     [Header("RAG Settings")]
     private const string askURL = "http://18.222.26.106:8000/ask";
 
     [Header("User Question")]
-    public string userQuestion = "What does a flight director do?";
+    public string userQuestion;
     public string answerFromRAG;
-    public Whisper whisper;
     public event Action<string> OnRAGResponseReady;
 
     public void Awake()
@@ -38,15 +41,18 @@ public class RAG : MonoBehaviour
         }
         catch (Exception ex)
         {
-            Debug.LogWarning("Whisper script not found: " + ex.Message);
+            Debug.LogWarning("Whisper script not found in RAG.cs: " + ex.Message);
+        }
+
+        try
+        {
+            aiManager = FindObjectOfType<AIManager>();
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning("AIManager script not found in RAG.cs: " + ex.Message);
         }
     }   
-
-    //Testing
-    public void Start()
-    {
-        AskQuestion(userQuestion);
-    }
 
     public void AskQuestion(string question)
     {
@@ -62,7 +68,7 @@ public class RAG : MonoBehaviour
         }
 
         userQuestion = question;
-        Debug.Log($"This is the user question: {userQuestion}");
+        Debug.Log($"This is the user question (RAG.cs): {userQuestion}");
 
         var reqObj = new AskRequest { question = question };
         string json = JsonUtility.ToJson(reqObj);
@@ -110,8 +116,22 @@ public class RAG : MonoBehaviour
             Debug.LogWarning($"Could not parse RAG JSON response, using raw text: {ex.Message}");
         }
 
+        // Gets the final answer from RAG and sends it to the AIManager
         answerFromRAG = parsedAnswer;
-        Debug.Log("RAG Answer: " + answerFromRAG);
-        OnRAGResponseReady?.Invoke(answerFromRAG);
+        Debug.Log("RAG Answer (RAG.cs): " + answerFromRAG);
+
+        // Confirm that information is sent to AIManager
+        if (answerFromRAG != string.Empty)
+        {
+            // Trigger the event to notify that the RAG response is ready
+            OnRAGResponseReady?.Invoke(answerFromRAG);
+
+            // Send the RAG answer to the AIManager
+            aiManager.RAGInfomration = answerFromRAG;
+
+            Debug.Log("Sent RAG answer to AIManager");
+        }
+
+       
     }
 }

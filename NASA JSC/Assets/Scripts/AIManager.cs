@@ -24,7 +24,8 @@ public class AIManager : MonoBehaviour
     private bool isSendingRequest; //Prevents overlapping chat-completion requests
 
     [Header("AI Prompt Settings")]
-    private const string AIWordcount = "50"; //Limit AI responses to 30 words
+    public string RAGInfomration;
+    private const string AIWordcount = "35"; //Limit AI responses to 35 words
     private const string FoundationsOfFlightOperationspart1 = "To instill within ourselves these qualities essential to professional excellence" + 
     "1. Discipline…Being able to follow as well as to lead, knowing that we must master ourselves before we can master our task" +
     "2. Competence…There being no substitute for total preparation and complete dedication, for space will not tolerate the careless or indifferent." +
@@ -38,9 +39,8 @@ public class AIManager : MonoBehaviour
     [SerializeField] private string promptAI = "You are a NASA mission assistant helping stackholders understand what is happening in NASA Johnson Space Center Mission Control Center. "
         + "Provide clear, concise, and accurate information based on NASA protocols and procedures. "
         + "Keep responses relevant to space missions and astronaut activities." + $"When generating a response you will follow the Foundations of Flight Operations as noted {FoundationsOfFlightOperationspart1}, {FoundationsOfFlightOperationspart2}, {FoundationsOfFlightOperationspart3}." 
-        + $"When it comes to missions you will prioritize the safety of the crew then safety of the vehicle, and then success of the mission. "
+        + $"When it comes to missions you will prioritize in the following 1) safety of the crew then 2) safety of the vehicle, and then 3) success of the mission. "
         + $" Do not go over {AIWordcount} words in your response.";
-    public string RAGInfomration;
 
     private void Awake()
     {
@@ -96,6 +96,11 @@ public class AIManager : MonoBehaviour
         }
 
         isSendingRequest = true;
+
+        //Add the RAG information to the prompt for additional context for the AI response
+        promptAI += $"In your response, pick the most important information in {RAGInfomration} but do not go over {AIWordcount} words."; 
+        Debug.Log($"Recieved RAG Information (AIManager.cs): {RAGInfomration}"); //Debug line to confirm RAG information is being received
+
         var messages = new List<ChatMessage>();
         //Add the system prompt first
         messages.Add(new ChatMessage
@@ -122,10 +127,11 @@ public class AIManager : MonoBehaviour
            if(res.Choices != null && res.Choices.Count > 0)
             {
                 var aiText = res.Choices[0].Message.Content;
-                aiResponses.Add(aiText); //Store the AI response
+                aiResponses.Add(aiText); // Store the AI response
                 Debug.Log($"AI: {aiText}");
-                OnAIResponseReady?.Invoke(aiText); //Trigger TTS immediately (no polling delay)
-                speechList.Clear(); //Clear the speech list after processing
+                OnAIResponseReady?.Invoke(aiText); // Trigger TTS immediately (no polling delay)
+                speechList.Clear(); // Clear the speech list after processing
+                promptAI = ""; //Reset the prompt to avoid repeated RAG information in future requests
                 
             }
         }
