@@ -105,7 +105,6 @@ namespace Samples.Whisper
         {
             isRecording = true;
             time = 0f;
-            Debug.Log("Start recording.");
 
             #if !UNITY_WEBGL
             clip = Microphone.Start(micName, false, duration, 44100);

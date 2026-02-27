@@ -155,8 +155,8 @@ public class ElevenLabsManager : MonoBehaviour
             {
                 //Play the generated audio clip
                 audioSource.PlayOneShot(voiceClip.AudioClip);
-                audioVisualizer.audioSource = audioSource; //Set the AudioSource reference in AudioVisualizer to sync visualizer with TTS audio
                 Debug.Log("TTS audio played.");
+                audioVisualizer.audioSource = audioSource; //Set the AudioSource reference in AudioVisualizer to sync visualizer with TTS audio
             }
             finally
             {

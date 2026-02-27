@@ -131,6 +131,7 @@ public class AIManager : MonoBehaviour
                 Debug.Log($"AI: {aiText}");
                 OnAIResponseReady?.Invoke(aiText); // Trigger TTS immediately (no polling delay)
                 speechList.Clear(); // Clear the speech list after processing
+                promptAI = ""; //Reset the prompt to avoid repeated RAG information in future requests
                 
             }
         }
