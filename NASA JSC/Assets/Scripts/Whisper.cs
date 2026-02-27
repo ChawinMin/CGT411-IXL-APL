@@ -5,6 +5,7 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
+using System.Collections;
 
 namespace Samples.Whisper
 {
@@ -104,10 +105,64 @@ namespace Samples.Whisper
         {
             isRecording = true;
             time = 0f;
+            Debug.Log("Start recording.");
 
             #if !UNITY_WEBGL
             clip = Microphone.Start(micName, false, duration, 44100);
             #endif
+        }
+
+        IEnumerator WaitForRAGResponse(string transcribedText)
+        {
+            if (rag == null)
+            {
+                SendUserMessageToAIManager(transcribedText);
+                yield break;
+            }
+
+            // Clear previous value so we wait for the new response.
+            rag.answerFromRAG = string.Empty;
+            rag.AskQuestion(transcribedText);
+
+            const float timeoutSeconds = 15f;
+            float elapsed = 0f;
+
+            // Wait until the RAG response is ready
+            while (rag.answerFromRAG == null || rag.answerFromRAG == string.Empty)
+            {
+                elapsed += Time.deltaTime;
+                if (elapsed >= timeoutSeconds)
+                {
+                    Debug.LogWarning("Timed out waiting for RAG response. Continuing without RAG context.");
+                    break;
+                }
+                yield return null; // Wait for the next frame
+            }
+
+            if (!string.IsNullOrWhiteSpace(rag.answerFromRAG) && aiManager != null)
+            {
+                aiManager.RAGInfomration = rag.answerFromRAG;
+                Debug.Log($"Received RAG answer (whisper.cs): {aiManager.RAGInfomration}");
+            }
+
+            SendUserMessageToAIManager(transcribedText);
+        }
+
+        private void SendUserMessageToAIManager(string transcribedText)
+        {
+            if (aiManager == null || string.IsNullOrWhiteSpace(transcribedText))
+            {
+                return;
+            }
+
+            var msg = new ChatMessage()
+            {
+                Role = "user",
+                Content = transcribedText
+            };
+
+            // Pass into the AI Manager's speech list
+            aiManager.AddMessage(msg);
         }
 
         // Sends a finished chunk to Whisper without blocking recording.
@@ -138,18 +193,13 @@ namespace Samples.Whisper
 
                 if (rag != null)
                 {
-                    rag.userQuestion = res.Text; // Set the user question in RAG to the transcribed text from Whisper
-                    rag.AskQuestion(res.Text);
+                    // Wait for RAG response before forwarding to AIManager.
+                    StartCoroutine(WaitForRAGResponse(res.Text));
                 }
-
-                var msg = new ChatMessage()
+                else
                 {
-                    Role = "user",
-                    Content = res.Text
-                };
-                
-                //Pass into the AI Manager's speech list
-                aiManager.AddMessage(msg);
+                    SendUserMessageToAIManager(res.Text);
+                }
             }
             catch (Exception ex)
             {

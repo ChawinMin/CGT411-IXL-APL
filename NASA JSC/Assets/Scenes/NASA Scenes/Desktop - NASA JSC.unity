@@ -89062,12 +89062,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   whisper: {fileID: 2129398367}
   aiResponses: []
+  RAGInfomration: 
   promptAI: You are a NASA mission assistant helping stackholders understand what
     is happening in NASA Johnson Space Center Mission Control Center. Provide clear,
     concise, and accurate information based on NASA protocols and procedures. Keep
     responses relevant to space missions and astronaut activities. Do not go over
     30 words in your response.
-  RAGInfomration: 
 --- !u!114 &1885687745
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -89080,9 +89080,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6fb32f78dabbf64469563e1a81843c58, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  userQuestion: What does a flight director do?
-  answerFromRAG: 
   whisper: {fileID: 2129398367}
+  aiManager: {fileID: 0}
+  userQuestion: 
+  answerFromRAG: 
 --- !u!1 &1888858834
 GameObject:
   m_ObjectHideFlags: 0
