@@ -4,7 +4,7 @@ using Samples.Whisper;
 using UnityEngine;
 using OpenAI;
 using System.Threading.Tasks;
-using UnityEditor.MPE;
+//using UnityEditor.MPE;
 using System;
 
 public class AIManager : MonoBehaviour

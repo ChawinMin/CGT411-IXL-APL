@@ -26,7 +26,7 @@ namespace Samples.Whisper
         private readonly int duration = 1;
         [SerializeField] private float speechRmsThreshold = 0.01f;
         [SerializeField] private float endSilenceSeconds = 0.2f;
-        [SerializeField] private float maxUtteranceSeconds = 10f;
+        [SerializeField] private float maxUtteranceSeconds = 15f;
         private AudioClip clip; // Current mic capture buffer.
         public bool isRecording; // Whether we should keep cycling chunks.
         private float time; // Timer for the current chunk.
