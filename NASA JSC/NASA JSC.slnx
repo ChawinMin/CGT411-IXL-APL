@@ -31,6 +31,7 @@
   <Project Path="glTFast.csproj" />
   <Project Path="Oculus.Platform.csproj" />
   <Project Path="Meta.WitAi.Conduit.Editor.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Meta.WitAI.Lib.Editor.csproj" />
   <Project Path="Unity.TextMeshPro.Editor.csproj" />
   <Project Path="glTFast.Editor.csproj" />
@@ -52,7 +53,6 @@
   <Project Path="Utilities.Audio.csproj" />
   <Project Path="Unity.Collections.csproj" />
   <Project Path="Unity.AI.Navigation.Editor.csproj" />
-  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.VisualStudio.Editor.csproj" />
   <Project Path="Unity.XR.Oculus.Editor.csproj" />
   <Project Path="PPv2URPConverters.csproj" />
