@@ -1,20 +1,20 @@
-﻿using OpenAI;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using OpenAI;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.InputSystem;
-using System.Collections;
+using UnityEngine.Networking;
+using UnityEngine.UI;
 
 namespace Samples.Whisper
 {
     public class Whisper : MonoBehaviour
     {
-
         /*
-        RMS means Root Mean Square. It is a statistical measure used to quantify the magnitude of a varying quantity. 
-        In audio processing, RMS is commonly used to measure the average power or 
+        RMS means Root Mean Square. It is a statistical measure used to quantify the magnitude of a varying quantity.
+        In audio processing, RMS is commonly used to measure the average power or
         loudness of an audio signal
 
         Utterance is a single spoken word, statement, or vocal sound made by a person. Think of a sentence.
@@ -27,35 +27,39 @@ namespace Samples.Whisper
         [SerializeField] private float speechRmsThreshold = 0.01f;
         [SerializeField] private float endSilenceSeconds = 0.2f;
         [SerializeField] private float maxUtteranceSeconds = 15f;
+        [SerializeField] private float preSpeechSeconds = 0.5f;
         private AudioClip clip; // Current mic capture buffer.
         public bool isRecording; // Whether we should keep cycling chunks.
         private float time; // Timer for the current chunk.
         private string micName;
 
-        [Header("OpenAI API")]
-        public OpenAIApi openai = new OpenAIApi(); //API Key to OpenAI
+        [Header("Whisper Server")]
+        [SerializeField] private string whisperUrl = "http://18.217.36.198:8000/transcribe";
 
         private bool isTranscribing; // Whether a transcription request is in flight.
-
         private readonly Queue<AudioClip> pendingClips = new Queue<AudioClip>(); // Queue chunks while a request is in flight.
-
         private readonly List<float> utteranceBuffer = new List<float>();
+        private readonly List<float> preSpeechBuffer = new List<float>();
 
         [Header("Speech Detection State")]
         private bool inSpeech; // Whether we are currently in a speech segment.
-
         private float silenceTimer; // Timer for silence at end of speech segment.
-
         private int sampleRate; // Cached sample rate of the mic.
-
         private int channels; // Cached channel count of the mic.
-
         private bool isMuted = true; // Whether the microphone is muted.
 
         [Header("References and UI")]
         public GameObject UIMuteIcon; // Reference to the Mute Icon in the UI
         public AIManager aiManager; // Reference to AIManager Script
         public RAG rag; // Reference to RAG Script
+
+        [Serializable]
+        private class TranscriptionResponse
+        {
+            public string text;
+            public string transcription;
+            public string response;
+        }
 
         private void Awake()
         {
@@ -80,11 +84,10 @@ namespace Samples.Whisper
 
         private void Start()
         {
-            #if UNITY_WEBGL && !UNITY_EDITOR
+#if UNITY_WEBGL && !UNITY_EDITOR
             Debug.LogWarning("Microphone not supported on WebGL.");
             return;
-            #else
-
+#else
             var devices = Microphone.devices;
             if (devices.Length == 0)
             {
@@ -95,8 +98,7 @@ namespace Samples.Whisper
             var index = Mathf.Clamp(defaultMicIndex, 0, devices.Length - 1);
             micName = devices[index];
             Debug.Log($"Using mic: {micName} (index {index})");
-
-            #endif
+#endif
             StartRecording(); // Begin recording immediately on start.
         }
 
@@ -106,12 +108,12 @@ namespace Samples.Whisper
             isRecording = true;
             time = 0f;
 
-            #if !UNITY_WEBGL
+#if !UNITY_WEBGL
             clip = Microphone.Start(micName, false, duration, 44100);
-            #endif
+#endif
         }
 
-        IEnumerator WaitForRAGResponse(string transcribedText)
+        private IEnumerator WaitForRAGResponse(string transcribedText)
         {
             if (rag == null)
             {
@@ -127,7 +129,7 @@ namespace Samples.Whisper
             float elapsed = 0f;
 
             // Wait until the RAG response is ready
-            while (rag.answerFromRAG == null || rag.answerFromRAG == string.Empty)
+            while (string.IsNullOrEmpty(rag.answerFromRAG))
             {
                 elapsed += Time.deltaTime;
                 if (elapsed >= timeoutSeconds)
@@ -154,7 +156,7 @@ namespace Samples.Whisper
                 return;
             }
 
-            var msg = new ChatMessage()
+            var msg = new ChatMessage
             {
                 Role = "user",
                 Content = transcribedText
@@ -164,12 +166,12 @@ namespace Samples.Whisper
             aiManager.AddMessage(msg);
         }
 
-        // Sends a finished chunk to Whisper without blocking recording.
-        private async void TranscribeClip(AudioClip clipToTranscribe)
+        // Sends a finished chunk to server-side Whisper without blocking recording.
+        private IEnumerator TranscribeClipCoroutine(AudioClip clipToTranscribe)
         {
             if (clipToTranscribe == null || IsSilent(clipToTranscribe, speechRmsThreshold))
             {
-                return; // Skip transcription on silence/empty clip.
+                yield break; // Skip transcription on silence/empty clip.
             }
 
             isTranscribing = true;
@@ -178,40 +180,73 @@ namespace Samples.Whisper
             var chunkFileName = $"{timestamp}_{fileName}";
             byte[] data = SaveWav.Save(chunkFileName, clipToTranscribe);
 
-            var req = new CreateAudioTranscriptionsRequest
+            var form = new WWWForm();
+            form.AddBinaryData("file", data, "audio.wav", "audio/wav");
+            form.AddField("model", "whisper-1");
+            form.AddField("language", "en");
+
+            using var req = UnityWebRequest.Post(whisperUrl, form);
+            req.downloadHandler = new DownloadHandlerBuffer();
+
+            Debug.Log($"Sending audio chunk to Whisper endpoint: {whisperUrl}");
+            yield return req.SendWebRequest();
+
+            if (req.result != UnityWebRequest.Result.Success)
             {
-                FileData = new FileData() { Data = data, Name = "audio.wav" },
-                Model = "whisper-1",
-                Language = "en"
-            };
+                Debug.LogError($"Whisper endpoint failed: {req.responseCode} {req.error}\n{req.downloadHandler?.text}");
+                isTranscribing = false;
+                if (pendingClips.Count > 0)
+                {
+                    var failedNext = pendingClips.Dequeue();
+                    StartCoroutine(TranscribeClipCoroutine(failedNext));
+                }
+                yield break;
+            }
+
+            var responseText = req.downloadHandler?.text ?? string.Empty;
+            var transcribedText = responseText;
 
             try
             {
-                var res = await openai.CreateAudioTranscription(req);
-                Debug.Log($"Printing in Whisper Script: {res.Text}");
-
-                if (rag != null)
+                var parsed = JsonUtility.FromJson<TranscriptionResponse>(responseText);
+                if (parsed != null)
                 {
-                    // Wait for RAG response before forwarding to AIManager.
-                    StartCoroutine(WaitForRAGResponse(res.Text));
-                }
-                else
-                {
-                    SendUserMessageToAIManager(res.Text);
+                    if (!string.IsNullOrWhiteSpace(parsed.text))
+                    {
+                        transcribedText = parsed.text;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(parsed.transcription))
+                    {
+                        transcribedText = parsed.transcription;
+                    }
+                    else if (!string.IsNullOrWhiteSpace(parsed.response))
+                    {
+                        transcribedText = parsed.response;
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Debug.LogError($"There is an error in Whisper: {ex.Message}");
+                Debug.LogWarning($"Could not parse Whisper JSON response, using raw text: {ex.Message}");
             }
-            finally
+
+            Debug.Log($"Printing in Whisper Script: {transcribedText}");
+
+            if (rag != null)
             {
-                isTranscribing = false;
-                if (pendingClips.Count > 0)
-                {
-                    var next = pendingClips.Dequeue();
-                    TranscribeClip(next);
-                }
+                // Wait for RAG response before forwarding to AIManager.
+                StartCoroutine(WaitForRAGResponse(transcribedText));
+            }
+            else
+            {
+                SendUserMessageToAIManager(transcribedText);
+            }
+
+            isTranscribing = false;
+            if (pendingClips.Count > 0)
+            {
+                var next = pendingClips.Dequeue();
+                StartCoroutine(TranscribeClipCoroutine(next));
             }
         }
 
@@ -220,24 +255,20 @@ namespace Samples.Whisper
             //Check for M key press to toggle mute/unmute
             if (Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame)
             {
-                //Debug.Log("M key pressed.");
-
-                if(isMuted) //You are currently muted
+                if (isMuted) //You are currently muted
                 {
                     isMuted = false;
                     UIMuteIcon.SetActive(false); // Hide the mute icon
-                    //Debug.Log("Microphone unmuted.");
                 }
                 else //You are currently unmuted
                 {
                     isMuted = true;
                     UIMuteIcon.SetActive(true); // Show the mute icon
-                    //Debug.Log("Microphone muted.");
                 }
             }
 
             //If not muted, process as normal
-            if(!isMuted)
+            if (!isMuted)
             {
                 // Handle chunk timing.
                 if (!isRecording)
@@ -253,9 +284,9 @@ namespace Samples.Whisper
                 }
 
                 // Stop the mic to finalize the chunk, then immediately restart.
-                #if !UNITY_WEBGL
+#if !UNITY_WEBGL
                 Microphone.End(micName);
-                #endif
+#endif
 
                 // Grab the finished clip, restart recording, and transcribe the old clip.
                 var clipToTranscribe = clip;
@@ -281,15 +312,25 @@ namespace Samples.Whisper
             var rms = GetRms(clipToProcess);
             var isSilent = rms < speechRmsThreshold;
 
-            if (!isSilent)
+            if (!inSpeech)
             {
+                if (isSilent)
+                {
+                    CapturePreSpeech(clipToProcess);
+                    return;
+                }
+
+                // Speech just started: prepend a short pre-roll so first words are not clipped.
                 inSpeech = true;
                 silenceTimer = 0f;
+                if (preSpeechBuffer.Count > 0)
+                {
+                    utteranceBuffer.AddRange(preSpeechBuffer);
+                    preSpeechBuffer.Clear();
+                }
                 AppendSamples(clipToProcess);
 
                 var currentSeconds = (float)utteranceBuffer.Count / (sampleRate * channels);
-
-                // If we've exceeded max utterance length, flush it now.
                 if (currentSeconds >= maxUtteranceSeconds)
                 {
                     FlushUtterance();
@@ -298,8 +339,16 @@ namespace Samples.Whisper
                 return;
             }
 
-            if (!inSpeech)
+            if (!isSilent)
             {
+                silenceTimer = 0f;
+                AppendSamples(clipToProcess);
+                var currentSeconds = (float)utteranceBuffer.Count / (sampleRate * channels);
+                if (currentSeconds >= maxUtteranceSeconds)
+                {
+                    FlushUtterance();
+                    Debug.Log("Max utterance length reached, flushing to Whisper.");
+                }
                 return;
             }
 
@@ -313,6 +362,20 @@ namespace Samples.Whisper
             }
         }
 
+        // Keep a rolling pre-speech buffer so we can prepend a short lead-in at speech start.
+        private void CapturePreSpeech(AudioClip clipToCapture)
+        {
+            var samples = new float[clipToCapture.samples * clipToCapture.channels];
+            clipToCapture.GetData(samples, 0);
+            preSpeechBuffer.AddRange(samples);
+
+            var maxPreSpeechSamples = Mathf.Max(1, (int)(preSpeechSeconds * sampleRate * channels));
+            if (preSpeechBuffer.Count > maxPreSpeechSamples)
+            {
+                preSpeechBuffer.RemoveRange(0, preSpeechBuffer.Count - maxPreSpeechSamples);
+            }
+        }
+
         // Append samples from the given clip to the utterance buffer.
         private void AppendSamples(AudioClip clipToAppend)
         {
@@ -322,7 +385,7 @@ namespace Samples.Whisper
             Debug.Log("Samples appended to utterance buffer.");
         }
 
-        // Flush the current utterance buffer (package into a single audio clip) 
+        // Flush the current utterance buffer (package into a single audio clip)
         // and send it for transcription.
         private void FlushUtterance()
         {
@@ -348,7 +411,7 @@ namespace Samples.Whisper
                 return;
             }
 
-            TranscribeClip(utteranceClip);
+            StartCoroutine(TranscribeClipCoroutine(utteranceClip));
             Debug.Log("Transcription has been sent to Whisper.");
         }
 
@@ -360,7 +423,7 @@ namespace Samples.Whisper
 
         private static float GetRms(AudioClip clipToCheck)
         {
-            //Compares the audio clip's RMS to a threshold value. And check if it is below the threshold or 
+            //Compares the audio clip's RMS to a threshold value. And check if it is below the threshold or
             //higher. To determine if the clip is silent or not.
             var samples = new float[clipToCheck.samples * clipToCheck.channels];
             clipToCheck.GetData(samples, 0);

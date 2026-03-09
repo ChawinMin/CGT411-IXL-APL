@@ -26,7 +26,7 @@ public class RAG : MonoBehaviour
     public AIManager aiManager;
 
     [Header("RAG Settings")]
-    private const string askURL = "http://18.222.26.106:8000/ask";
+    private const string askURL = "http://18.217.36.198:8000/ask"; // old server: http://18.222.26.106:8000/ask
 
     [Header("User Question")]
     public string userQuestion;

@@ -2,35 +2,27 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System;
-using ElevenLabs;
-using System.IO;
-using UnityEditor;
+using System.Text;
 using UnityEngine.UI;
-using ElevenLabs.TextToSpeech;
-using System.Linq;
-using Unity.VisualScripting;
-using ElevenLabs.Voices;
-using ElevenLabs.Models;
+using UnityEngine.Networking;
 
 public class ElevenLabsManager : MonoBehaviour
 {
+    [Serializable]
+    private class TtsRequest
+    {
+        public string text;
+    }
 
     [Header("References")]
     private AIManager aiManager; //Reference to AIManager Script
     private AudioVisualizer audioVisualizer; //Reference to AudioVisualizer Script
 
     [Header("Eleven Labs States")]
+    [SerializeField] private string ttsUrl = "http://18.217.36.198:8000/speak";
     private AudioSource audioSource; //AudioSource to play TTS audio
     private bool isAITalking; //Flag to indicate if AI is currently talking
-    private ElevenLabsClient apiClient; //Cached ElevenLabs client to avoid recreating on every line
-    private Voice cachedVoice; //Cached voice to avoid calling GetAllVoices each request
     private readonly Queue<string> pendingSpeech = new Queue<string>(); //Queue speech while current audio is playing
-    [System.Serializable] //Wrapper class for deserializing auth.json and loading ElevenLabs API Key
-
-    private class AuthWrapper
-    {
-        public string ELEVEN_LABS_API_KEY;
-    }
 
 
     private void Awake()
@@ -43,18 +35,6 @@ public class ElevenLabsManager : MonoBehaviour
         catch (Exception ex)
         {
             Debug.LogWarning("AIManager script not found: " + ex.Message);
-        }
-
-        //Load ElevenLabs API Key
-        try
-        {
-           apiClient = getElevenLabsAPIKey();
-           Debug.Log("ElevenLabs API Key loaded successfully.");
-
-        }
-        catch (Exception ex)
-        {
-            Debug.LogWarning("ElevenLabs API Key not found: " + ex.Message);
         }
 
         try
@@ -93,21 +73,6 @@ public class ElevenLabsManager : MonoBehaviour
         }
     }
 
-    private ElevenLabsClient getElevenLabsAPIKey()
-    {
-         //Load auth.json file
-        var json = File.ReadAllText("C:/Users/cim09/.openai/auth.json");
-
-        //Deserialize auth.json to get ElevenLabs API Key
-        var authFile = JsonUtility.FromJson<AuthWrapper>(json);
-
-        //Load Elevenlab Api Key
-        var auth = new ElevenLabsAuthentication(authFile.ELEVEN_LABS_API_KEY);
-        var api = new ElevenLabsClient(auth);
-        
-        return api;
-    }
-
     private void QueueOrSpeak(string responseText)
     {
         if (string.IsNullOrWhiteSpace(responseText))
@@ -122,58 +87,70 @@ public class ElevenLabsManager : MonoBehaviour
         }
 
         Debug.Log("Starting to speak AI response.");
-        talk(responseText);
+        StartCoroutine(TalkCoroutine(responseText));
     }
 
-    public async void talk(string responseText)
+    private IEnumerator TalkCoroutine(string responseText)
     {
-        if (isAITalking) return; //Prevent overlapping TTS requests
-        if (string.IsNullOrWhiteSpace(responseText) || apiClient == null) return;
+        if (isAITalking) yield break; //Prevent overlapping TTS requests
+        if (string.IsNullOrWhiteSpace(responseText)) yield break;
 
         isAITalking = true;
 
-        //Pass the AI response to ElevenLabs TTS and play the audio
-        try
-        {
-            //Resolve voice once and reuse for subsequent TTS requests.
-            if (cachedVoice == null)
-            {
-                cachedVoice = (await apiClient.VoicesEndpoint.GetAllVoicesAsync()).FirstOrDefault();
-            }
-            if (cachedVoice == null)
-            {
-                Debug.LogWarning("No ElevenLabs voice available.");
-                return;
-            }
+        var payload = new TtsRequest { text = responseText };
+        var json = JsonUtility.ToJson(payload);
+        var bodyRaw = Encoding.UTF8.GetBytes(json);
 
-            //Flash model is optimized for lower latency.
-            var request = new TextToSpeechRequest(cachedVoice, responseText, model: Model.FlashV2_5, outputFormat: OutputFormat.PCM_24000); 
-            
-            //Get the generated audio clip
-            var voiceClip = await apiClient.TextToSpeechEndpoint.TextToSpeechAsync(request);
+        using var req = new UnityWebRequest(ttsUrl, "POST");
+        req.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        req.downloadHandler = new DownloadHandlerAudioClip(ttsUrl, AudioType.MPEG);
+        req.SetRequestHeader("Content-Type", "application/json");
+        req.SetRequestHeader("Accept", "audio/mpeg");
 
-            try
-            {
-                //Play the generated audio clip
-                audioSource.PlayOneShot(voiceClip.AudioClip);
-                Debug.Log("TTS audio played.");
-                audioVisualizer.audioSource = audioSource; //Set the AudioSource reference in AudioVisualizer to sync visualizer with TTS audio
-            }
-            finally
-            {
-                //GeneratedClip owns NativeArray allocations; dispose to prevent leak warnings.
-                voiceClip?.Dispose();
-            }
-        }
-        finally
+        yield return req.SendWebRequest();
+
+        if (req.result != UnityWebRequest.Result.Success)
         {
-            isAITalking = false; //Reset the talking flag
+            var errorBody = string.Empty;
+            var errorBytes = req.downloadHandler?.data;
+            if (errorBytes != null && errorBytes.Length > 0)
+            {
+                errorBody = Encoding.UTF8.GetString(errorBytes);
+            }
+            Debug.LogError($"Speak endpoint failed: {req.responseCode} {req.error}\n{errorBody}");
+            isAITalking = false;
             if (pendingSpeech.Count > 0)
             {
-                var nextSpeech = pendingSpeech.Dequeue();
-                Debug.Log("Playing next queued speech.");
-                talk(nextSpeech);
+                var failedNext = pendingSpeech.Dequeue();
+                StartCoroutine(TalkCoroutine(failedNext));
             }
+            yield break;
+        }
+
+        var clip = DownloadHandlerAudioClip.GetContent(req);
+        if (clip == null)
+        {
+            Debug.LogWarning("Speak endpoint returned no audio clip.");
+            isAITalking = false;
+            yield break;
+        }
+
+        audioSource.PlayOneShot(clip);
+        Debug.Log("Speak audio played.");
+        if (audioVisualizer != null)
+        {
+            audioVisualizer.audioSource = audioSource; //Set the AudioSource reference in AudioVisualizer to sync visualizer with TTS audio
+        }
+
+        // Keep talking state true until playback completes to preserve queueing behavior.
+        yield return new WaitWhile(() => audioSource != null && audioSource.isPlaying);
+
+        isAITalking = false; //Reset the talking flag
+        if (pendingSpeech.Count > 0)
+        {
+            var nextSpeech = pendingSpeech.Dequeue();
+            Debug.Log("Playing next queued speech.");
+            StartCoroutine(TalkCoroutine(nextSpeech));
         }
     }
          
