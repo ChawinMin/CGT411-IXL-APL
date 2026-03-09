@@ -3,14 +3,32 @@ using System.Collections.Generic;
 using Samples.Whisper;
 using UnityEngine;
 using OpenAI;
-using System.Threading.Tasks;
+using UnityEngine.Networking;
 //using UnityEditor.MPE;
 using System;
+using System.Text;
 
 public class AIManager : MonoBehaviour
 {
+    [Serializable]
+    private class AnswerRequest
+    {
+        public string prompt;
+        public string question;
+        public string rag;
+    }
+
+    [Serializable]
+    private class AnswerResponse
+    {
+        public string answer;
+        public string response;
+        public string text;
+    }
+
     [Header("References")]
-    private OpenAIApi APIKey = new OpenAIApi(); //API Key to OpenAI
+    private const string askURL = "http://18.217.36.198:8000/answer";
+
     public Whisper whisper; //Reference to Whisper Script
 
     [Header("State")]
@@ -65,20 +83,6 @@ public class AIManager : MonoBehaviour
         }
     }
 
-    public void Start()
-    {
-        /*
-        Check to ensure that the API is valid and reachable
-        */
-
-        //Check if the API Key is set
-        if(APIKey == null)
-        {
-            Debug.LogError("API Key is not set in the AIManager.");
-            return;
-        }
-    }
-
     public void AddMessage(ChatMessage message)
     {
         if (string.IsNullOrWhiteSpace(message.Content))
@@ -99,63 +103,100 @@ public class AIManager : MonoBehaviour
         hasNewMessage = true; //Set the flag to indicate a new message has been added
     }
 
-    public async void SendRequest()
+    public void SendRequest()
     {
         if (isSendingRequest || speechList.Count == 0)
         {
             return;
         }
 
+        StartCoroutine(SendRequestCoroutine());
+    }
+
+    private IEnumerator SendRequestCoroutine()
+    {
         isSendingRequest = true;
 
-        //Add the RAG information to the prompt for additional context for the AI response
-        promptAI += $"In your response, pick the most important information in {RAGInfomration} but do not go over {AIWordcount} words."; 
-        Debug.Log($"Recieved RAG Information (AIManager.cs): {RAGInfomration}"); //Debug line to confirm RAG information is being received
-        Debug.Log($"This is the current prompt being sent: {promptAI}");
-
-        var messages = new List<ChatMessage>();
-        //Add the system prompt first
-        messages.Add(new ChatMessage
+        var questionBuilder = new StringBuilder();
+        string latestUserQuestion = string.Empty;
+        foreach (var msg in speechList)
         {
-            Role = "system",
-            Content = promptAI
-        });
-        messages.AddRange(speechList); //Add all messages from the speech list
+            questionBuilder.AppendLine($"{msg.Role}: {msg.Content}");
+            if (msg.Role == "user")
+            {
+                latestUserQuestion = msg.Content;
+            }
+        }
 
-        //Create the chat completion request based on the messages and prompts
-        var req = new CreateChatCompletionRequest()
+        var requestPayload = new AnswerRequest
         {
-            Model = "gpt-5-nano",
-            Messages = messages
+            prompt = originalPrompt,
+            question = string.IsNullOrWhiteSpace(latestUserQuestion) ? questionBuilder.ToString() : latestUserQuestion,
+            rag = RAGInfomration ?? string.Empty
         };
+        var json = JsonUtility.ToJson(requestPayload);
+
+        using var req = new UnityWebRequest(askURL, "POST");
+        var bodyRaw = Encoding.UTF8.GetBytes(json);
+        req.uploadHandler = new UploadHandlerRaw(bodyRaw);
+        req.downloadHandler = new DownloadHandlerBuffer();
+        req.SetRequestHeader("Content-Type", "application/json");
+        req.SetRequestHeader("Accept", "application/json");
+
+        Debug.Log($"Recieved RAG Information (AIManager.cs): {RAGInfomration}");
+        Debug.Log($"Prompt being sent to AI endpoint:\n{requestPayload.prompt}\nUser Question:\n{requestPayload.question}\nRAG Information:\n{requestPayload.rag}");
+        Debug.Log($"Sending prompt to endpoint: {askURL}");
+        foreach(var m in speechList)
+        {
+            Debug.Log($"{m.Role}: {m.Content}");
+        }
+
+        yield return req.SendWebRequest();
+
+        if (req.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError($"AI endpoint failed: {req.responseCode} {req.error}\n{req.downloadHandler?.text}");
+            isSendingRequest = false;
+            yield break;
+        }
+
+        var responseText = req.downloadHandler?.text ?? string.Empty;
+        var aiText = responseText;
 
         try
         {
-           var res = await APIKey.CreateChatCompletion(req);
-           foreach(var m in speechList)
+            var parsed = JsonUtility.FromJson<AnswerResponse>(responseText);
+            if (parsed != null)
             {
-                Debug.Log($"{m.Role}: {m.Content}");
-            }
-           if(res.Choices != null && res.Choices.Count > 0)
-            {
-                var aiText = res.Choices[0].Message.Content;
-                aiResponses.Add(aiText); // Store the AI response
-                Debug.Log($"AI: {aiText}");
-                OnAIResponseReady?.Invoke(aiText); // Trigger TTS immediately (no polling delay)
-                speechList.Clear(); // Clear the speech list after processing
-                promptAI = ""; //Clear the prompt to avoid repeated RAG information in future requests
-                promptAI = originalPrompt; //Reset the prompt to the original prompt for future requests
+                if (!string.IsNullOrWhiteSpace(parsed.answer))
+                {
+                    aiText = parsed.answer;
+                }
+                else if (!string.IsNullOrWhiteSpace(parsed.response))
+                {
+                    aiText = parsed.response;
+                }
+                else if (!string.IsNullOrWhiteSpace(parsed.text))
+                {
+                    aiText = parsed.text;
+                }
             }
         }
         catch (Exception ex)
         {
-            Debug.LogError(ex.Message);
+            Debug.LogWarning($"Could not parse AI endpoint JSON response, using raw text: {ex.Message}");
         }
-        finally
+
+        if (!string.IsNullOrWhiteSpace(aiText))
         {
-            isSendingRequest = false;
+            aiResponses.Add(aiText); // Store the AI response
+            Debug.Log($"AI: {aiText}");
+            OnAIResponseReady?.Invoke(aiText); // Trigger TTS immediately (no polling delay)
+            speechList.Clear(); // Clear the speech list after processing
         }
-        
+
+        isSendingRequest = false;
+
     }
 
     private void Update()
