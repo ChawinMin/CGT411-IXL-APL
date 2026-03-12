@@ -252,8 +252,8 @@ namespace Samples.Whisper
 
         private void Update()
         {
-            //Check for M key press to toggle mute/unmute
-            if (Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame)
+            //Check for M key press or the 'A' button on the Meta Quest controller to toggle mute/unmute
+            if ((Keyboard.current != null && Keyboard.current.mKey.wasPressedThisFrame) || OVRInput.GetDown(OVRInput.Button.One))
             {
                 if (isMuted) //You are currently muted
                 {
