@@ -5,6 +5,7 @@ using System;
 using System.Text;
 using UnityEngine.UI;
 using UnityEngine.Networking;
+using TMPro;
 
 public class ElevenLabsManager : MonoBehaviour
 {
@@ -17,6 +18,9 @@ public class ElevenLabsManager : MonoBehaviour
     [Header("References")]
     private AIManager aiManager; //Reference to AIManager Script
     private AudioVisualizer audioVisualizer; //Reference to AudioVisualizer Script
+
+    [Header("UI References")]
+    [SerializeField] private TMP_Text process_text; //Reference to process text UI element
 
     [Header("Eleven Labs States")]
     [SerializeField] private string ttsUrl = "http://18.217.36.198:8000/speak";
@@ -87,6 +91,7 @@ public class ElevenLabsManager : MonoBehaviour
         }
 
         Debug.Log("Starting to speak AI response.");
+        process_text.text = "Speaking AI response...";
         StartCoroutine(TalkCoroutine(responseText));
     }
 
@@ -136,6 +141,7 @@ public class ElevenLabsManager : MonoBehaviour
         }
 
         audioSource.PlayOneShot(clip);
+        process_text.text = "Audio Finished";
         Debug.Log("Speak audio played.");
         if (audioVisualizer != null)
         {

@@ -4,6 +4,7 @@ using Samples.Whisper;
 using UnityEngine;
 using UnityEngine.Networking;
 using System;
+using TMPro;
 
 public class RAG : MonoBehaviour
 {
@@ -20,6 +21,9 @@ public class RAG : MonoBehaviour
         public string response;
         public string text;
     }
+
+    [Header("UI References")]
+    [SerializeField] private TMP_Text process_text;
 
     [Header("References")]
     public Whisper whisper;
@@ -130,6 +134,7 @@ public class RAG : MonoBehaviour
             aiManager.RAGInfomration = answerFromRAG;
 
             Debug.Log("Sent RAG answer to AIManager");
+            process_text.text = "RAG response received and sent to AI Manager.";
         }
 
        

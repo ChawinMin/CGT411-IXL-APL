@@ -7,6 +7,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Networking;
 using UnityEngine.UI;
+using TMPro;
 
 namespace Samples.Whisper
 {
@@ -32,6 +33,9 @@ namespace Samples.Whisper
         public bool isRecording; // Whether we should keep cycling chunks.
         private float time; // Timer for the current chunk.
         private string micName;
+
+        [Header("UI References")]
+        [SerializeField] private TMP_Text process_text; // Reference to the UI Text element for displaying processing status.
 
         [Header("Whisper Server")]
         [SerializeField] private string whisperUrl = "http://18.217.36.198:8000/transcribe";
@@ -135,6 +139,7 @@ namespace Samples.Whisper
                 if (elapsed >= timeoutSeconds)
                 {
                     Debug.LogWarning("Timed out waiting for RAG response. Continuing without RAG context.");
+                    process_text.text = "RAG response timed out. Continuing without context.";
                     break;
                 }
                 yield return null; // Wait for the next frame
@@ -144,6 +149,7 @@ namespace Samples.Whisper
             {
                 aiManager.RAGInfomration = rag.answerFromRAG;
                 Debug.Log($"Received RAG answer (whisper.cs): {aiManager.RAGInfomration}");
+                process_text.text = "RAG response received. Sending to AI Manager.";
             }
 
             SendUserMessageToAIManager(transcribedText);
@@ -359,6 +365,7 @@ namespace Samples.Whisper
             {
                 FlushUtterance();
                 Debug.Log("End of speech detected, flushing to Whisper.");
+                process_text.text = "Processing...";
             }
         }
 
@@ -383,6 +390,7 @@ namespace Samples.Whisper
             clipToAppend.GetData(samples, 0);
             utteranceBuffer.AddRange(samples);
             Debug.Log("Samples appended to utterance buffer.");
+            process_text.text = "Listening...";
         }
 
         // Flush the current utterance buffer (package into a single audio clip)
