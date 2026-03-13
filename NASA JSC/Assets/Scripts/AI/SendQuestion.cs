@@ -3,12 +3,16 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using OpenAI;
+using TMPro;
 
 public class SendQuestion : MonoBehaviour
 {
     [Header("References")]
     public AIManager aiManager;
     public RAG rag;
+
+    [Header("UI References")]
+    [SerializeField] private TMP_Text process_text; //Reference to process text UI element
 
     [Header("Question Settings")]
     [SerializeField] private string questionToSend;
@@ -42,6 +46,8 @@ public class SendQuestion : MonoBehaviour
             rag.answerFromRAG = string.Empty;
             rag.AskQuestion(question);
             Debug.Log("Question sent to RAG: " + question);
+            process_text.text = "Question sent to RAG";
+
 
             const float timeoutSeconds = 15f;
             float elapsed = 0f;
@@ -81,6 +87,7 @@ public class SendQuestion : MonoBehaviour
         {
             if (!string.IsNullOrWhiteSpace(questionToSend) && questionToSend != previousQuestion)
             {
+                process_text.text = "Question recieved";
                 Send(questionToSend);
                 previousQuestion = questionToSend;
                 questionToSend = string.Empty; // Clear the input after sending

@@ -7,6 +7,7 @@ using UnityEngine.Networking;
 //using UnityEditor.MPE;
 using System;
 using System.Text;
+using TMPro;
 
 public class AIManager : MonoBehaviour
 {
@@ -25,6 +26,9 @@ public class AIManager : MonoBehaviour
         public string response;
         public string text;
     }
+
+    [Header("UI References")]
+    [SerializeField] private TMP_Text process_text;
 
     [Header("References")]
     private const string askURL = "http://18.217.36.198:8000/answer";
@@ -144,6 +148,7 @@ public class AIManager : MonoBehaviour
         req.SetRequestHeader("Accept", "application/json");
 
         Debug.Log($"Recieved RAG Information (AIManager.cs): {RAGInfomration}");
+        process_text.text = "AIManager recieved RAG info";
         Debug.Log($"Prompt being sent to AI endpoint:\n{requestPayload.prompt}\nUser Question:\n{requestPayload.question}\nRAG Information:\n{requestPayload.rag}");
         Debug.Log($"Sending prompt to endpoint: {askURL}");
         foreach(var m in speechList)
@@ -162,6 +167,7 @@ public class AIManager : MonoBehaviour
 
         var responseText = req.downloadHandler?.text ?? string.Empty;
         var aiText = responseText;
+        process_text.text = "AI response received, processing...";
 
         try
         {
@@ -191,6 +197,7 @@ public class AIManager : MonoBehaviour
         {
             aiResponses.Add(aiText); // Store the AI response
             Debug.Log($"AI: {aiText}");
+            process_text.text = "AI response received, processing...";
             OnAIResponseReady?.Invoke(aiText); // Trigger TTS immediately (no polling delay)
             speechList.Clear(); // Clear the speech list after processing
         }
