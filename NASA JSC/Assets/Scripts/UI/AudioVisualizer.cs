@@ -17,13 +17,19 @@ public class AudioVisualizer : MonoBehaviour
  
     [Header("State")]
     public float[] spectrumData;
- 
+    
+    /// <summary>
+    /// Set the spectrum data that can be used
+    /// </summary>
     void Awake()
     {
         // Must be a power of 2 number, between 64 and 8192
         spectrumData = new float[4096];
     }
- 
+    
+    /// <summary>
+    /// Update the talking bars depending on the amplitude of the audio clips -> show speech
+    /// </summary>
     void Update()
     {
         audioSource.GetSpectrumData(spectrumData, 0, fftWindow);
@@ -51,6 +57,9 @@ public class AudioVisualizer : MonoBehaviour
     }
 }
  
+/// <summary>
+/// The different types of frequencies that can be used
+/// </summary>
 public enum FrequencyFocusWindow
 {
     Entire = 1,

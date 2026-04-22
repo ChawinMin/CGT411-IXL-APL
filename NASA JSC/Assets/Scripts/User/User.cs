@@ -1,5 +1,8 @@
 using UnityEngine;
 
+/// <summary>
+/// Handles first-person player movement, camera look, jumping, and grounded checks.
+/// </summary>
 public class User : MonoBehaviour
 {
     [Header ("Camera Settings")]
@@ -27,29 +30,39 @@ public class User : MonoBehaviour
     private float playerHeight;
     private float raycastDistance;
 
+    /// <summary>
+    /// Locks and hides the cursor before gameplay begins.
+    /// </summary>
     private void Awake()
     {
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
 
+    /// <summary>
+    /// Caches required components and prepares the ground-check ray distance.
+    /// </summary>
     void Start()
     {
         rb = GetComponent<Rigidbody>();
         rb.freezeRotation = true;
         cameraTransform = Camera.main.transform;
 
-        // Set the raycast to be slightly beneath the player's feet
+        // Set the raycast to be slightly beneath the player's feet.
         playerHeight = GetComponent<CapsuleCollider>().height * transform.localScale.y;
         raycastDistance = (playerHeight / 2) + 0.2f;
 
-        // Hides the mouse
+        // Keep the mouse hidden and locked for first-person camera control.
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
 
+    /// <summary>
+    /// Reads player input, rotates the camera, and checks whether the player has landed.
+    /// </summary>
     void Update()
     {
+        // Capture movement input each frame so FixedUpdate can apply it to physics.
         moveHorizontal = Input.GetAxisRaw("Horizontal");
         moveForward = Input.GetAxisRaw("Vertical");
 
@@ -60,7 +73,7 @@ public class User : MonoBehaviour
             Jump();
         }
 
-        // Checking when we're on the ground and keeping track of our ground check delay
+        // Delay the ground check right after jumping so the player is not instantly considered grounded again.
         if (!isGrounded && groundCheckTimer <= 0f)
         {
             Vector3 rayOrigin = transform.position + Vector3.up * 0.1f;
@@ -72,20 +85,25 @@ public class User : MonoBehaviour
         }
 
     }
-
+    /// <summary>
+    /// Applies movement and jump-related physics during the fixed physics step.
+    /// </summary>
     void FixedUpdate()
     {
         MovePlayer();
         ApplyJumpPhysics();
     }
-
+    /// <summary>
+    /// Moves the player horizontally based on input while preserving vertical velocity.
+    /// </summary>
     void MovePlayer()
     {
 
+        // Build movement relative to the player's facing direction.
         Vector3 movement = (transform.right * moveHorizontal + transform.forward * moveForward).normalized;
         Vector3 targetVelocity = movement * MoveSpeed;
 
-        // Apply movement to the Rigidbody
+        // Apply horizontal movement directly to the Rigidbody while keeping current Y velocity.
         Vector3 velocity = rb.velocity;
         velocity.x = targetVelocity.x;
         velocity.z = targetVelocity.z;
@@ -97,25 +115,33 @@ public class User : MonoBehaviour
             rb.velocity = new Vector3(0, rb.velocity.y, 0);
         }
     }
-
+    /// <summary>
+    /// Rotates the player horizontally and tilts the camera vertically for mouse look.
+    /// </summary>
     void RotateCamera()
     {
+        // Turn the player body left and right.
         float horizontalRotation = Input.GetAxis("Mouse X") * mouseSensitivity;
         transform.Rotate(0, horizontalRotation, 0);
 
+        // Clamp vertical look so the camera cannot rotate past straight up or down.
         verticalRotation -= Input.GetAxis("Mouse Y") * mouseSensitivity;
         verticalRotation = Mathf.Clamp(verticalRotation, -90f, 90f);
 
         cameraTransform.localRotation = Quaternion.Euler(verticalRotation, 0, 0);
     }
-
+    /// <summary>
+    /// Starts a jump and temporarily disables grounded checks.
+    /// </summary>
     void Jump()
     {
         isGrounded = false;
         groundCheckTimer = groundCheckDelay;
         rb.velocity = new Vector3(rb.velocity.x, jumpForce, rb.velocity.z); // Initial burst for the jump
     }
-
+    /// <summary>
+    /// Adjusts upward and downward velocity so the jump feels snappier.
+    /// </summary>
     void ApplyJumpPhysics()
     {
         if (rb.velocity.y < 0) 

@@ -26,6 +26,9 @@ public class SmoothedCamera : MonoBehaviour
 
     Vector3 velocity = Vector3.zero;
 
+    /// <summary>
+    /// Get the camera and set the position and the rotation
+    /// </summary>
     void Start()
 
     {
@@ -38,6 +41,11 @@ public class SmoothedCamera : MonoBehaviour
 
     }
 
+    /// <summary>
+    /// Update the camera rotation
+    /// </summary>
+    /// <param name="camera">The player camera</param>
+    /// <returns>Return the up-to-date rotation</returns>
     private Quaternion UpdateRotation(Transform camera)
 
     {
@@ -52,7 +60,10 @@ public class SmoothedCamera : MonoBehaviour
 
     }
 
- 
+
+    /// <summary>
+    /// Update the position and rotation of the user camera
+    /// </summary>
 
     void Update()
 
